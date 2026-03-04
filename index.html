@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DevTok — Dev Content, Infinite Scroll</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ─── Top Bar ─── -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <span class="logo-icon">&lt;/&gt;</span>
+      <span class="logo-text">DevTok</span>
+    </div>
+    <nav class="topbar-nav">
+      <button class="nav-btn active" data-tab="for-you">For You</button>
+      <button class="nav-btn" data-tab="following">Following</button>
+      <button class="nav-btn" data-tab="trending">#Trending</button>
+    </nav>
+    <div class="topbar-actions">
+      <button class="icon-btn search-btn" title="Search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="icon-btn notif-btn" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="badge">3</span>
+      </button>
+      <div class="avatar">JD</div>
+    </div>
+  </header>
+
+  <!-- ─── Main Feed ─── -->
+  <main class="feed" id="feed">
+    <!-- Videos injected by script.js -->
+  </main>
+
+  <!-- ─── Sidebar (desktop) ─── -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <p class="sidebar-label">Suggested</p>
+      <div class="sidebar-user">
+        <div class="s-avatar" style="background: #6EE7B7;">TK</div>
+        <div class="s-info"><span class="s-name">@tkodev</span><span class="s-meta">React · TypeScript</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user">
+        <div class="s-avatar" style="background: #818CF8;">AR</div>
+        <div class="s-info"><span class="s-name">@arjunr</span><span class="s-meta">Rust · Systems</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user">
+        <div class="s-avatar" style="background: #F472B6;">ml</div>
+        <div class="s-info"><span class="s-name">@mlhacks</span><span class="s-meta">Python · ML/AI</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <p class="sidebar-label">Trending Tags</p>
+      <div class="tag-cloud">
+        <span class="tag">#javascript</span>
+        <span class="tag">#rustlang</span>
+        <span class="tag">#devlife</span>
+        <span class="tag">#typescript</span>
+        <span class="tag">#100daysofcode</span>
+        <span class="tag">#linux</span>
+        <span class="tag">#ai</span>
+        <span class="tag">#opensource</span>
+      </div>
+    </div>
+    <p class="sidebar-footer">DevTok © 2025 · Made for devs</p>
+  </aside>
+
+  <!-- ─── Comment Drawer ─── -->
+  <div class="comment-drawer" id="commentDrawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-header">
+      <h3>Comments</h3>
+      <button class="close-drawer" id="closeDrawer">✕</button>
+    </div>
+    <div class="comments-list" id="commentsList"></div>
+    <div class="comment-input-row">
+      <div class="avatar sm">JD</div>
+      <input type="text" class="comment-input" placeholder="Add a comment…" id="commentInput" />
+      <button class="send-btn" id="sendComment">Post</button>
+    </div>
+  </div>
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <!-- ─── Like Burst ─── -->
+  <div class="like-burst" id="likeBurst">❤️</div>
+
+  <script src="script.js"></script>
+</body>
+</html>
