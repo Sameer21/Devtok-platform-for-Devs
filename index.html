@@ -21,16 +21,76 @@
       <button class="nav-btn" data-tab="trending">#Trending</button>
     </nav>
     <div class="topbar-actions">
-      <button class="icon-btn search-btn" title="Search">
+      <button class="icon-btn search-btn" id="searchBtn" title="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
-      <button class="icon-btn notif-btn" title="Notifications">
+      <button class="icon-btn notif-btn" id="notifBtn" title="Notifications">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        <span class="badge">3</span>
+        <span class="badge" id="notifBadge">3</span>
       </button>
       <div class="avatar">JD</div>
     </div>
   </header>
+
+  <!-- ─── Search Overlay ─── -->
+  <div class="search-overlay" id="searchOverlay">
+    <div class="search-modal">
+      <div class="search-input-row">
+        <svg class="search-icon-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-main-input" id="searchInput" type="text" placeholder="Search creators, tags, topics…" autocomplete="off" spellcheck="false" />
+        <button class="search-clear-btn" id="searchClear" title="Clear">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+        <button class="search-cancel-btn" id="searchCancel">Cancel</button>
+      </div>
+
+      <div class="search-body" id="searchBody">
+        <!-- Default state: recents + trending -->
+        <div class="search-default" id="searchDefault">
+          <div class="search-section" id="recentSection">
+            <div class="search-section-header">
+              <span class="search-section-title">Recent</span>
+              <button class="search-section-action" id="clearRecents">Clear</button>
+            </div>
+            <div id="recentList"></div>
+          </div>
+          <div class="search-section">
+            <div class="search-section-header">
+              <span class="search-section-title">Trending</span>
+            </div>
+            <div class="search-trending-grid" id="trendingGrid"></div>
+          </div>
+          <div class="search-section">
+            <div class="search-section-header">
+              <span class="search-section-title">Popular Creators</span>
+            </div>
+            <div id="popularCreators"></div>
+          </div>
+        </div>
+
+        <!-- Results state -->
+        <div class="search-results" id="searchResults" style="display:none">
+          <div class="search-results-tabs">
+            <button class="sr-tab active" data-tab="all">All</button>
+            <button class="sr-tab" data-tab="creators">Creators</button>
+            <button class="sr-tab" data-tab="tags">Tags</button>
+            <button class="sr-tab" data-tab="topics">Topics</button>
+          </div>
+          <div id="searchResultsList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Notification Panel ─── -->
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-panel-header">
+      <span class="notif-panel-title">Notifications</span>
+      <button class="notif-mark-all" id="notifMarkAll">Mark all read</button>
+    </div>
+    <div class="notif-list" id="notifList"></div>
+  </div>
+  <div class="notif-backdrop" id="notifBackdrop"></div>
 
   <!-- ─── Main Feed ─── -->
   <main class="feed" id="feed">
@@ -41,19 +101,54 @@
   <aside class="sidebar">
     <div class="sidebar-section">
       <p class="sidebar-label">Suggested</p>
-      <div class="sidebar-user">
+      <div class="sidebar-user" data-handle="tkodev" data-name="Tko Dev" data-initials="TK" data-color="#6EE7B7" data-meta="React · TypeScript">
         <div class="s-avatar" style="background: #6EE7B7;">TK</div>
         <div class="s-info"><span class="s-name">@tkodev</span><span class="s-meta">React · TypeScript</span></div>
         <button class="follow-btn">Follow</button>
       </div>
-      <div class="sidebar-user">
+      <div class="sidebar-user" data-handle="arjunr" data-name="Arjun R" data-initials="AR" data-color="#818CF8" data-meta="Rust · Systems">
         <div class="s-avatar" style="background: #818CF8;">AR</div>
         <div class="s-info"><span class="s-name">@arjunr</span><span class="s-meta">Rust · Systems</span></div>
         <button class="follow-btn">Follow</button>
       </div>
-      <div class="sidebar-user">
+      <div class="sidebar-user" data-handle="mlhacks" data-name="ML Hacks" data-initials="ml" data-color="#F472B6" data-meta="Python · ML/AI">
         <div class="s-avatar" style="background: #F472B6;">ml</div>
         <div class="s-info"><span class="s-name">@mlhacks</span><span class="s-meta">Python · ML/AI</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user" data-handle="dx_dev" data-name="DX Dev" data-initials="DX" data-color="#FBBF24" data-meta="Node.js · DevOps">
+        <div class="s-avatar" style="background: #FBBF24;">DX</div>
+        <div class="s-info"><span class="s-name">@dx_dev</span><span class="s-meta">Node.js · DevOps</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user" data-handle="zrdesign" data-name="ZR Design" data-initials="ZR" data-color="#60A5FA" data-meta="CSS · UI/UX">
+        <div class="s-avatar" style="background: #60A5FA;">ZR</div>
+        <div class="s-info"><span class="s-name">@zrdesign</span><span class="s-meta">CSS · UI/UX</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user" data-handle="byteboss" data-name="Byte Boss" data-initials="BB" data-color="#A78BFA" data-meta="Go · Backend">
+        <div class="s-avatar" style="background: #A78BFA;">BB</div>
+        <div class="s-info"><span class="s-name">@byteboss</span><span class="s-meta">Go · Backend</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user" data-handle="svelteking" data-name="Svelte King" data-initials="SK" data-color="#F87171" data-meta="Svelte · Frontend">
+        <div class="s-avatar" style="background: #F87171;">SK</div>
+        <div class="s-info"><span class="s-name">@svelteking</span><span class="s-meta">Svelte · Frontend</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user" data-handle="cloudninja" data-name="Cloud Ninja" data-initials="CN" data-color="#34D399" data-meta="AWS · Kubernetes">
+        <div class="s-avatar" style="background: #34D399;">CN</div>
+        <div class="s-info"><span class="s-name">@cloudninja</span><span class="s-meta">AWS · Kubernetes</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user" data-handle="opensrcdev" data-name="Open Src Dev" data-initials="OS" data-color="#FB923C" data-meta="Open Source · Linux">
+        <div class="s-avatar" style="background: #FB923C;">OS</div>
+        <div class="s-info"><span class="s-name">@opensrcdev</span><span class="s-meta">Open Source · Linux</span></div>
+        <button class="follow-btn">Follow</button>
+      </div>
+      <div class="sidebar-user" data-handle="tsqueen" data-name="TS Queen" data-initials="TQ" data-color="#E879F9" data-meta="TypeScript · Testing">
+        <div class="s-avatar" style="background: #E879F9;">TQ</div>
+        <div class="s-info"><span class="s-name">@tsqueen</span><span class="s-meta">TypeScript · Testing</span></div>
         <button class="follow-btn">Follow</button>
       </div>
     </div>
@@ -89,8 +184,106 @@
   </div>
   <div class="drawer-overlay" id="drawerOverlay"></div>
 
+  <!-- ─── Following Feed ─── -->
+  <div class="following-feed" id="followingFeed" style="display:none">
+    <div class="following-feed-inner" id="followingFeedInner"></div>
+  </div>
+
+  <!-- ─── Trending Feed ─── -->
+  <div class="following-feed" id="trendingFeedPanel" style="display:none">
+    <div class="following-feed-inner" id="trendingFeedInner"></div>
+  </div>
+
   <!-- ─── Like Burst ─── -->
   <div class="like-burst" id="likeBurst">❤️</div>
+
+  <!-- ─── Profile Modal ─── -->
+  <div class="profile-overlay" id="profileOverlay"></div>
+  <div class="profile-modal" id="profileModal" role="dialog" aria-modal="true" aria-label="Profile">
+    <div class="profile-modal-header">
+      <button class="profile-close-btn" id="profileClose" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <h2 class="profile-modal-title">My Profile</h2>
+      <button class="profile-edit-toggle" id="profileEditToggle">Edit</button>
+    </div>
+
+    <!-- View Mode -->
+    <div class="profile-view" id="profileView">
+      <div class="profile-hero">
+        <div class="profile-avatar-large" id="profileAvatarDisplay">JD</div>
+        <div class="profile-hero-info">
+          <div class="profile-display-name" id="viewDisplayName">James Dev</div>
+          <div class="profile-handle" id="viewHandle">@jamesdev</div>
+          <div class="profile-bio" id="viewBio">Full-stack dev. Building things in public. 🚀</div>
+        </div>
+      </div>
+      <div class="profile-stats">
+        <div class="stat-item">
+          <span class="stat-value" id="statFollowers">1.2k</span>
+          <span class="stat-label">Followers</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="statFollowing">348</span>
+          <span class="stat-label">Following</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="statLikes">0</span>
+          <span class="stat-label">Liked</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="statSaved">0</span>
+          <span class="stat-label">Saved</span>
+        </div>
+      </div>
+      <div class="profile-tags-section">
+        <p class="profile-section-label">Interests</p>
+        <div class="profile-interests" id="viewInterests">
+          <span class="tag">#javascript</span>
+          <span class="tag">#typescript</span>
+          <span class="tag">#devlife</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Mode -->
+    <div class="profile-edit" id="profileEdit" style="display:none">
+      <div class="profile-avatar-edit-wrap">
+        <div class="profile-avatar-large" id="profileAvatarEdit">JD</div>
+        <p class="avatar-hint">Pick a color</p>
+        <div class="avatar-color-picker" id="avatarColorPicker">
+          <button class="color-swatch active" data-color="#6EE7B7" style="background:#6EE7B7" title="Mint"></button>
+          <button class="color-swatch" data-color="#818CF8" style="background:#818CF8" title="Indigo"></button>
+          <button class="color-swatch" data-color="#F472B6" style="background:#F472B6" title="Pink"></button>
+          <button class="color-swatch" data-color="#FBBF24" style="background:#FBBF24" title="Amber"></button>
+          <button class="color-swatch" data-color="#34D399" style="background:#34D399" title="Emerald"></button>
+          <button class="color-swatch" data-color="#60A5FA" style="background:#60A5FA" title="Blue"></button>
+          <button class="color-swatch" data-color="#A78BFA" style="background:#A78BFA" title="Violet"></button>
+          <button class="color-swatch" data-color="#F87171" style="background:#F87171" title="Red"></button>
+        </div>
+      </div>
+      <div class="edit-field-group">
+        <label class="edit-label">Display Name</label>
+        <input class="edit-input" id="editDisplayName" type="text" maxlength="40" placeholder="Your name" />
+      </div>
+      <div class="edit-field-group">
+        <label class="edit-label">Handle</label>
+        <div class="edit-input-prefix-wrap">
+          <span class="edit-prefix">@</span>
+          <input class="edit-input prefix" id="editHandle" type="text" maxlength="24" placeholder="yourhandle" />
+        </div>
+      </div>
+      <div class="edit-field-group">
+        <label class="edit-label">Bio</label>
+        <textarea class="edit-input textarea" id="editBio" maxlength="120" rows="3" placeholder="Tell the world about yourself…"></textarea>
+        <span class="char-counter"><span id="bioCharCount">0</span>/120</span>
+      </div>
+      <div class="edit-actions">
+        <button class="edit-cancel-btn" id="editCancel">Cancel</button>
+        <button class="edit-save-btn" id="editSave">Save Changes</button>
+      </div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>
