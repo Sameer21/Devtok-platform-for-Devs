@@ -42,25 +42,72 @@ function wrapIndex(index) {
 
 const MAX_AUTO_VIDEOS = 500;
 
-function captionFromSrc(src) {
-  const name = src.split('/').pop() || src;
-  const stem = name.replace(/\.[^/.]+$/, '');
-  return `${stem} upload.`;
-}
+
+const RANDOM_AUTHORS = [
+  { author: '@tkodev',     authorInitials: 'TK', authorColor: '#6EE7B7' },
+  { author: '@arjunr',     authorInitials: 'AR', authorColor: '#818CF8' },
+  { author: '@mlhacks',    authorInitials: 'ml', authorColor: '#F472B6' },
+  { author: '@dx_dev',     authorInitials: 'DX', authorColor: '#FBBF24' },
+  { author: '@zrdesign',   authorInitials: 'ZR', authorColor: '#60A5FA' },
+  { author: '@byteboss',   authorInitials: 'BB', authorColor: '#A78BFA' },
+  { author: '@svelteking', authorInitials: 'SK', authorColor: '#F87171' },
+  { author: '@cloudninja', authorInitials: 'CN', authorColor: '#34D399' },
+  { author: '@opensrcdev', authorInitials: 'OS', authorColor: '#FB923C' },
+  { author: '@tsqueen',    authorInitials: 'TQ', authorColor: '#E879F9' },
+];
+
+const RANDOM_CAPTIONS = [
+  'When your regex works on the first try 🎉 #devmagic',
+  'CSS is just a suggestion at this point 💀 #frontendfails',
+  'Shipped to prod on a Friday. No regrets. 🚀 #yolo',
+  'Finally understood closures after 3 years 😭 #javascript',
+  'My tech stack is held together by vibes and Stack Overflow',
+  'Refactored 500 lines down to 12. Today was a good day ✨',
+  'The bug was a missing semicolon. I am fine. Totally fine.',
+  'Turned coffee into code since 6am ☕ #grind',
+  'Types are love. Types are life. #typescript',
+  'Just dropped my first open source lib 🎊 go star it pls',
+  'Nobody: … Me at 2am: let me rewrite this in Rust',
+  'docker-compose up ✅  docker-compose down ✅  understanding what happened ❌',
+  'git blame always finds me 👀 #guilty',
+  'Kubernetes is just distributed chaos with extra steps',
+  'Hot take: dark mode is a personality trait and I stand by it 🌙',
+  'My PR got 47 comments. Half were about variable names.',
+  'vim user btw. been trying to exit since 2019 💀',
+  'Built a whole feature. Pushed to wrong branch. Classic.',
+  'The documentation said it was simple. The documentation lied.',
+  'console.log driven development is a valid methodology change my mind',
+];
+
+const RANDOM_TAGS = [
+  ['#javascript', '#webdev'],
+  ['#typescript', '#devlife'],
+  ['#rustlang', '#systems'],
+  ['#python', '#ai'],
+  ['#css', '#frontend'],
+  ['#devops', '#linux'],
+  ['#opensource', '#100daysofcode'],
+  ['#react', '#hooks'],
+  ['#go', '#backend'],
+  ['#devhumor', '#programming'],
+];
+
+function getRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 function buildVideoData(src, index) {
+  const author  = getRandom(RANDOM_AUTHORS);
+  const caption = getRandom(RANDOM_CAPTIONS);
+  const tags    = getRandom(RANDOM_TAGS);
   return {
     id: index + 1,
     src,
-    author: '@tkodev',
-    authorInitials: 'TK',
-    authorColor: '#6EE7B7',
-    caption: captionFromSrc(src),
-    tags: ['#devtok'],
-    likes: 0,
+    ...author,
+    caption,
+    tags,
+    likes: Math.floor(Math.random() * 9800) + 200,
     comments: [],
-    shares: 0,
-    saves: 0,
+    shares: Math.floor(Math.random() * 500),
+    saves: Math.floor(Math.random() * 300),
   };
 }
 
@@ -479,13 +526,6 @@ function handleFeedClick(e) {
     return;
   }
 
-  // Sidebar follow buttons
-  const sideFollowBtn = e.target.closest('.follow-btn');
-  if (sideFollowBtn) {
-    sideFollowBtn.textContent = sideFollowBtn.classList.toggle('following') ? 'Following' : 'Follow';
-    return;
-  }
-
   // Click on video wrapper = toggle play/pause
   const wrapper = e.target.closest('.video-wrapper');
   if (wrapper && !e.target.closest('.action-btns') && !e.target.closest('.mute-btn')) {
@@ -703,14 +743,744 @@ function showKeyHint() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   NAV TAB BUTTONS
+   NAV TAB BUTTONS + FOLLOWING FEED
    ═══════════════════════════════════════════════════════════ */
+
+// Followed users map: handle → { name, initials, color, meta, isNew }
+const followedUsers = new Map();
+
+const followingFeed      = document.getElementById('followingFeed');
+const followingFeedInner = document.getElementById('followingFeedInner');
+const trendingFeedPanel  = document.getElementById('trendingFeedPanel');
+const trendingFeedInner  = document.getElementById('trendingFeedInner');
+let   activeTab          = 'for-you';
+
+/* ─── Trending Data ──────────────────────── */
+const TRENDING_DATA = [
+  { tag:'javascript', desc:'Weekly JS tips, tricks, and wild one-liners flying across the dev community.', posts:'84.2k', views:'2.1M',  change:'up',  pct:92, badge:'🔥 Hot' },
+  { tag:'typescript', desc:'TS 5.x features, strict mode debates, and type gymnastics at its finest.',      posts:'61.7k', views:'1.4M',  change:'up',  pct:80, badge:'↑ Rising' },
+  { tag:'rustlang',   desc:'Memory safety meets blazing speed. Ownership model explainers going viral.',    posts:'39.4k', views:'920k',  change:'hot', pct:74, badge:'🔥 Hot' },
+  { tag:'devlife',    desc:'Memes, burnout stories, pair-programming fails, and coffee-fuelled wins.',      posts:'112k',  views:'5.8M',  change:'hot', pct:99, badge:'🔥 Hot' },
+  { tag:'ai',         desc:'LLM benchmarks, prompt engineering, and the latest model drop reactions.',      posts:'95.1k', views:'3.3M',  change:'up',  pct:96, badge:'↑ Surging' },
+  { tag:'linux',      desc:'Distro wars, dotfile flexing, and Neovim converts sharing their configs.',      posts:'28.3k', views:'610k',  change:'up',  pct:55, badge:'↑ Steady' },
+  { tag:'opensource', desc:'New repo launches, contribution guides, and "first PR" celebration threads.',   posts:'44.8k', views:'1.1M',  change:'new', pct:62, badge:'✨ New' },
+  { tag:'100daysofcode', desc:'Day-by-day progress logs, project showcases, and community accountability.', posts:'73.5k', views:'1.9M', change:'up',  pct:78, badge:'↑ Rising' },
+  { tag:'webdev',     desc:'CSS art, layout tricks, accessibility wins, and framework drama as usual.',      posts:'55.9k', views:'1.6M', change:'up',  pct:70, badge:'↑ Rising' },
+  { tag:'python',     desc:'FastAPI tutorials, data viz snippets, and ML pipeline walkthroughs.',            posts:'48.2k', views:'1.2M', change:'new', pct:66, badge:'✨ New' },
+];
+
+let activeTrendFilter = 'all';
+
+function renderTrendingFeed() {
+  trendingFeedInner.innerHTML = '';
+
+  // Hero
+  const hero = document.createElement('div');
+  hero.className = 'trending-hero';
+  hero.innerHTML = `
+    <div class="trending-hero-icon">🔥</div>
+    <div class="trending-hero-title">What's Trending</div>
+    <div class="trending-hero-sub">Top tags across DevTok right now — updated live</div>`;
+  trendingFeedInner.appendChild(hero);
+
+  // Filter chips
+  const filters = ['all','🔥 Hot','↑ Rising','✨ New'];
+  const row = document.createElement('div');
+  row.className = 'trending-tags-row';
+  filters.forEach(f => {
+    const chip = document.createElement('button');
+    chip.className = 'trend-filter-tag' + (activeTrendFilter === f ? ' active' : '');
+    chip.textContent = f === 'all' ? '# All Tags' : f;
+    chip.addEventListener('click', () => {
+      activeTrendFilter = f;
+      renderTrendingFeed();
+    });
+    row.appendChild(chip);
+  });
+  trendingFeedInner.appendChild(row);
+
+  // Section header
+  const head = document.createElement('div');
+  head.className = 'following-section-head';
+  head.innerHTML = `
+    <span class="following-section-title">Trending Tags</span>
+    <span class="following-count-badge">${TRENDING_DATA.length} tags</span>`;
+  trendingFeedInner.appendChild(head);
+
+  // Cards
+  const filtered = activeTrendFilter === 'all'
+    ? TRENDING_DATA
+    : TRENDING_DATA.filter(t => t.badge.startsWith(activeTrendFilter.charAt(0)) || t.badge.includes(activeTrendFilter.trim()));
+
+  filtered.forEach((t, i) => {
+    const card = document.createElement('div');
+    card.className = 'trend-card';
+    card.style.animationDelay = `${i * 50}ms`;
+    card.innerHTML = `
+      <div class="trend-rank ${i < 3 ? 'top' : ''}">${i + 1}</div>
+      <div class="trend-info">
+        <div class="trend-tag-name"><span>#</span>${t.tag}</div>
+        <div class="trend-desc">${t.desc}</div>
+        <div class="trend-meta-row">
+          <span class="trend-meta-item"><strong>${t.posts}</strong> posts</span>
+          <span class="trend-meta-item"><strong>${t.views}</strong> views</span>
+        </div>
+      </div>
+      <div class="trend-spark">
+        <span class="trend-change ${t.change}">${t.badge}</span>
+        <div class="trend-bar-wrap"><div class="trend-bar-fill" style="width:${t.pct}%"></div></div>
+      </div>`;
+    card.addEventListener('click', () => showToast(`#${t.tag} — ${t.posts} posts 🔥`));
+    trendingFeedInner.appendChild(card);
+  });
+}
+
+function renderFollowingFeed() {
+  followingFeedInner.innerHTML = '';
+
+  if (followedUsers.size === 0) {
+    followingFeedInner.innerHTML = `
+      <div class="following-empty">
+        <div class="following-empty-icon">👥</div>
+        <div class="following-empty-title">Nobody here yet</div>
+        <div class="following-empty-sub">Follow creators from the Suggested section to see their content here.</div>
+        <button class="following-empty-cta" id="followingBackBtn">Discover Creators</button>
+      </div>`;
+    document.getElementById('followingBackBtn')?.addEventListener('click', () => switchTab('for-you'));
+    return;
+  }
+
+  const head = document.createElement('div');
+  head.className = 'following-section-head';
+  head.innerHTML = `
+    <span class="following-section-title">People you follow</span>
+    <span class="following-count-badge">${followedUsers.size} following</span>`;
+  followingFeedInner.appendChild(head);
+
+  let delay = 0;
+  followedUsers.forEach((user, handle) => {
+    const card = document.createElement('div');
+    card.className = 'following-user-card';
+    card.style.animationDelay = `${delay}ms`;
+    delay += 60;
+
+    const tags = user.meta.split('·').map(t => `<span class="fu-tag">#${t.trim().toLowerCase().replace(/[^a-z0-9]/g,'')}</span>`).join('');
+
+    card.innerHTML = `
+      <div class="fu-avatar" style="background:linear-gradient(135deg,${user.color}bb,${user.color})">${user.initials}</div>
+      <div class="fu-info">
+        <div class="fu-name">${user.name}</div>
+        <div class="fu-handle">@${handle}</div>
+        <div class="fu-meta">${user.meta}</div>
+        <div class="fu-tags">${tags}</div>
+      </div>
+      <div class="fu-actions">
+        ${user.isNew ? '<span class="fu-new-badge">New</span>' : ''}
+        <button class="fu-unfollow-btn" data-handle="${handle}">Unfollow</button>
+      </div>`;
+
+    card.querySelector('.fu-unfollow-btn').addEventListener('click', () => unfollowUser(handle));
+    followingFeedInner.appendChild(card);
+  });
+}
+
+function unfollowUser(handle) {
+  followedUsers.delete(handle);
+  const sideRow = document.querySelector(`.sidebar-user[data-handle="${handle}"]`);
+  if (sideRow) {
+    const btn = sideRow.querySelector('.follow-btn');
+    btn.textContent = 'Follow';
+    btn.classList.remove('following');
+  }
+  renderFollowingFeed();
+  showToast(`Unfollowed @${handle}`);
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  followingFeed.style.display     = tab === 'following' ? 'block' : 'none';
+  trendingFeedPanel.style.display = tab === 'trending'  ? 'block' : 'none';
+  if (tab === 'following') renderFollowingFeed();
+  if (tab === 'trending')  renderTrendingFeed();
+}
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+/* ═══════════════════════════════════════════════════════════
+   SEARCH
+   ═══════════════════════════════════════════════════════════ */
+const SEARCH_DATA = {
+  creators: [
+    { type:'creator', initials:'TK', color:'#6EE7B7', name:'@tkodev',    sub:'React · TypeScript',   followers:'12.4k' },
+    { type:'creator', initials:'AR', color:'#818CF8', name:'@arjunr',    sub:'Rust · Systems',        followers:'8.1k'  },
+    { type:'creator', initials:'ml', color:'#F472B6', name:'@mlhacks',   sub:'Python · ML/AI',        followers:'22.9k' },
+    { type:'creator', initials:'DX', color:'#FBBF24', name:'@dx_dev',    sub:'Web Performance',       followers:'5.3k'  },
+    { type:'creator', initials:'ZR', color:'#60A5FA', name:'@zrdesign',  sub:'UI · CSS · Design',     followers:'9.7k'  },
+    { type:'creator', initials:'KP', color:'#34D399', name:'@kpgolang',  sub:'Go · Backend',          followers:'14.2k' },
+    { type:'creator', initials:'NS', color:'#A78BFA', name:'@nisha_sys', sub:'Linux · DevOps',        followers:'6.8k'  },
+    { type:'creator', initials:'RV', color:'#F87171', name:'@rvvim',     sub:'Vim · Terminal Nerd',   followers:'3.1k'  },
+  ],
+  tags: [
+    { type:'tag', name:'#javascript',    sub:'Trending · 48k posts'  },
+    { type:'tag', name:'#rustlang',      sub:'Growing · 19k posts'   },
+    { type:'tag', name:'#typescript',    sub:'Trending · 37k posts'  },
+    { type:'tag', name:'#devlife',       sub:'Chill · 61k posts'     },
+    { type:'tag', name:'#100daysofcode', sub:'Challenge · 92k posts' },
+    { type:'tag', name:'#linux',         sub:'Classic · 55k posts'   },
+    { type:'tag', name:'#ai',            sub:'Hot 🔥 · 110k posts'   },
+    { type:'tag', name:'#opensource',    sub:'Community · 44k posts' },
+    { type:'tag', name:'#python',        sub:'Trending · 80k posts'  },
+    { type:'tag', name:'#webdev',        sub:'Popular · 73k posts'   },
+    { type:'tag', name:'#golang',        sub:'Rising · 15k posts'    },
+    { type:'tag', name:'#systemdesign',  sub:'Deep · 28k posts'      },
+  ],
+  topics: [
+    { type:'topic', name:'Machine Learning',   sub:'AI & Data Science'       },
+    { type:'topic', name:'Web Performance',    sub:'Speed & Optimization'    },
+    { type:'topic', name:'Open Source',        sub:'Community & Projects'    },
+    { type:'topic', name:'System Design',      sub:'Architecture & Scale'    },
+    { type:'topic', name:'Terminal & Vim',     sub:'CLI Productivity'        },
+    { type:'topic', name:'Interview Prep',     sub:'Coding & Career'         },
+    { type:'topic', name:'DevOps & CI/CD',     sub:'Pipelines & Infra'       },
+    { type:'topic', name:'Functional Programming', sub:'FP Concepts'         },
+  ],
+};
+
+const TRENDING_TAGS = [
+  { label:'#ai',            count:'110k' },
+  { label:'#100daysofcode', count:'92k'  },
+  { label:'#python',        count:'80k'  },
+  { label:'#webdev',        count:'73k'  },
+  { label:'#javascript',    count:'48k'  },
+  { label:'#linux',         count:'55k'  },
+  { label:'#typescript',    count:'37k'  },
+  { label:'#opensource',    count:'44k'  },
+];
+
+let recentSearches = ['#rustlang', '@mlhacks', 'system design', '#typescript'];
+let activeSearchTab = 'all';
+
+const searchBtn      = document.getElementById('searchBtn');
+const searchOverlay  = document.getElementById('searchOverlay');
+const searchInput    = document.getElementById('searchInput');
+const searchClear    = document.getElementById('searchClear');
+const searchCancel   = document.getElementById('searchCancel');
+const searchDefault  = document.getElementById('searchDefault');
+const searchResults  = document.getElementById('searchResults');
+const searchResultsList = document.getElementById('searchResultsList');
+const recentList     = document.getElementById('recentList');
+const trendingGrid   = document.getElementById('trendingGrid');
+const popularCreators = document.getElementById('popularCreators');
+const clearRecentsBtn = document.getElementById('clearRecents');
+
+function openSearch() {
+  searchOverlay.classList.add('open');
+  renderSearchDefault();
+  setTimeout(() => searchInput.focus(), 80);
+  searchBtn.style.color = 'var(--accent2)';
+}
+
+function closeSearch() {
+  searchOverlay.classList.remove('open');
+  searchInput.value = '';
+  searchClear.classList.remove('visible');
+  showSearchDefault();
+  searchBtn.style.color = '';
+}
+
+function showSearchDefault() {
+  searchDefault.style.display = 'block';
+  searchResults.style.display = 'none';
+}
+
+function showSearchResults() {
+  searchDefault.style.display = 'none';
+  searchResults.style.display = 'block';
+}
+
+function highlight(text, query) {
+  if (!query) return text;
+  const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return text.replace(re, '<span class="search-highlight">$1</span>');
+}
+
+function renderSearchDefault() {
+  // Recents
+  recentList.innerHTML = '';
+  const recentSection = document.getElementById('recentSection');
+  if (!recentSearches.length) { recentSection.style.display = 'none'; }
+  else {
+    recentSection.style.display = 'block';
+    recentSearches.forEach((q, i) => {
+      const el = document.createElement('div');
+      el.className = 'recent-item';
+      el.innerHTML = `
+        <div class="recent-icon">${q.startsWith('#') ? '#️⃣' : q.startsWith('@') ? '👤' : '🔍'}</div>
+        <span class="recent-text">${q}</span>
+        <button class="recent-remove" data-i="${i}" title="Remove">✕</button>
+      `;
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.recent-remove')) return;
+        searchInput.value = q;
+        searchInput.dispatchEvent(new Event('input'));
+      });
+      el.querySelector('.recent-remove').addEventListener('click', () => {
+        recentSearches.splice(i, 1);
+        renderSearchDefault();
+      });
+      recentList.appendChild(el);
+    });
+  }
+
+  // Trending
+  trendingGrid.innerHTML = '';
+  TRENDING_TAGS.forEach(t => {
+    const chip = document.createElement('div');
+    chip.className = 'trend-chip';
+    chip.innerHTML = `${t.label} <span class="trend-count">${t.count}</span>`;
+    chip.addEventListener('click', () => {
+      searchInput.value = t.label;
+      searchInput.dispatchEvent(new Event('input'));
+    });
+    trendingGrid.appendChild(chip);
+  });
+
+  // Popular creators
+  popularCreators.innerHTML = '';
+  SEARCH_DATA.creators.slice(0, 4).forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'creator-row';
+    el.innerHTML = `
+      <div class="creator-av" style="background:linear-gradient(135deg,${c.color}bb,${c.color})">${c.initials}</div>
+      <div class="creator-info">
+        <div class="creator-name">${c.name}</div>
+        <div class="creator-meta">${c.sub}</div>
+      </div>
+      <div class="creator-followers">${c.followers}</div>
+    `;
+    el.addEventListener('click', () => {
+      searchInput.value = c.name;
+      searchInput.dispatchEvent(new Event('input'));
+    });
+    popularCreators.appendChild(el);
+  });
+}
+
+function runSearch(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) { showSearchDefault(); return; }
+  showSearchResults();
+
+  const allData = [
+    ...SEARCH_DATA.creators,
+    ...SEARCH_DATA.tags,
+    ...SEARCH_DATA.topics,
+  ];
+
+  const filter = (items) => items.filter(item =>
+    item.name.toLowerCase().includes(q) ||
+    (item.sub && item.sub.toLowerCase().includes(q))
+  );
+
+  const filteredAll      = filter(allData);
+  const filteredCreators = filter(SEARCH_DATA.creators);
+  const filteredTags     = filter(SEARCH_DATA.tags);
+  const filteredTopics   = filter(SEARCH_DATA.topics);
+
+  const map = { all: filteredAll, creators: filteredCreators, tags: filteredTags, topics: filteredTopics };
+  renderResults(map[activeSearchTab] || filteredAll, q);
+}
+
+function renderResults(items, query) {
+  searchResultsList.innerHTML = '';
+  if (!items.length) {
+    searchResultsList.innerHTML = `
+      <div class="search-no-results">
+        <div class="nr-icon">🔍</div>
+        <div class="nr-text">No results for "<strong>${query}</strong>"</div>
+        <div class="nr-sub">Try a different keyword or tag</div>
+      </div>`;
+    return;
+  }
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'search-result-item';
+
+    if (item.type === 'creator') {
+      el.innerHTML = `
+        <div class="sr-avatar" style="background:linear-gradient(135deg,${item.color}bb,${item.color})">${item.initials}</div>
+        <div class="sr-info">
+          <div class="sr-name">${highlight(item.name, query)}</div>
+          <div class="sr-sub">${highlight(item.sub, query)} · ${item.followers} followers</div>
+        </div>
+        <span class="sr-badge creator">Creator</span>
+      `;
+    } else if (item.type === 'tag') {
+      el.innerHTML = `
+        <div class="sr-tag-icon">#</div>
+        <div class="sr-info">
+          <div class="sr-name">${highlight(item.name, query)}</div>
+          <div class="sr-sub">${highlight(item.sub, query)}</div>
+        </div>
+        <span class="sr-badge tag">Tag</span>
+      `;
+    } else {
+      el.innerHTML = `
+        <div class="sr-tag-icon" style="background:rgba(244,114,182,0.12);border-color:rgba(244,114,182,0.25);color:var(--accent3)">⚡</div>
+        <div class="sr-info">
+          <div class="sr-name">${highlight(item.name, query)}</div>
+          <div class="sr-sub">${highlight(item.sub, query)}</div>
+        </div>
+        <span class="sr-badge topic">Topic</span>
+      `;
+    }
+
+    el.addEventListener('click', () => {
+      if (!recentSearches.includes(item.name)) {
+        recentSearches.unshift(item.name);
+        if (recentSearches.length > 5) recentSearches.pop();
+      }
+      showToast(`Opened: ${item.name}`);
+      closeSearch();
+    });
+
+    searchResultsList.appendChild(el);
+  });
+}
+
+// Tab switching
+document.querySelectorAll('.sr-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.sr-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeSearchTab = tab.dataset.tab;
+    runSearch(searchInput.value);
   });
 });
+
+searchInput.addEventListener('input', () => {
+  const val = searchInput.value;
+  searchClear.classList.toggle('visible', val.length > 0);
+  runSearch(val);
+});
+
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSearch();
+  if (e.key === 'Enter' && searchInput.value.trim()) {
+    const q = searchInput.value.trim();
+    if (!recentSearches.includes(q)) {
+      recentSearches.unshift(q);
+      if (recentSearches.length > 5) recentSearches.pop();
+    }
+  }
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchClear.classList.remove('visible');
+  showSearchDefault();
+  searchInput.focus();
+});
+
+searchCancel.addEventListener('click', closeSearch);
+searchBtn.addEventListener('click', openSearch);
+
+clearRecentsBtn.addEventListener('click', () => {
+  recentSearches = [];
+  renderSearchDefault();
+});
+
+// Close on backdrop click (outside modal)
+searchOverlay.addEventListener('click', (e) => {
+  if (e.target === searchOverlay) closeSearch();
+});
+
+/* ═══════════════════════════════════════════════════════════
+   NOTIFICATION PANEL
+   ═══════════════════════════════════════════════════════════ */
+const NOTIFICATIONS = [
+  { id: 1, type: 'like',    unread: true,  avatar: 'TK', color: '#6EE7B7', text: '<strong>@tkodev</strong> liked your comment on <strong>#typescript</strong>',     time: '2 min ago' },
+  { id: 2, type: 'follow',  unread: true,  avatar: 'AR', color: '#818CF8', text: '<strong>@arjunr</strong> started following you',                                    time: '14 min ago' },
+  { id: 3, type: 'comment', unread: true,  avatar: 'ml', color: '#F472B6', text: '<strong>@mlhacks</strong> commented: <em>"Great explanation of closures!"</em>',    time: '1 hr ago' },
+  { id: 4, type: 'like',    unread: false, avatar: 'DX', color: '#FBBF24', text: '<strong>@dx_dev</strong> liked your post on <strong>#rustlang</strong>',            time: '3 hrs ago' },
+  { id: 5, type: 'mention', unread: false, avatar: 'ZR', color: '#60A5FA', text: '<strong>@zrdesign</strong> mentioned you in a comment',                             time: 'Yesterday' },
+  { id: 6, type: 'system',  unread: false, avatar: null, color: null,      text: '🎉 Your post reached <strong>1,000 views!</strong> Keep it up.',                   time: '2 days ago' },
+];
+
+const TYPE_EMOJI = { like: '❤️', follow: '👤', comment: '💬', mention: '@', system: '🔔' };
+
+const notifBtn      = document.getElementById('notifBtn');
+const notifPanel    = document.getElementById('notifPanel');
+const notifBackdrop = document.getElementById('notifBackdrop');
+const notifBadge    = document.getElementById('notifBadge');
+const notifList     = document.getElementById('notifList');
+const notifMarkAll  = document.getElementById('notifMarkAll');
+
+let notifOpen = false;
+let notifications = [...NOTIFICATIONS];
+
+function countUnread() { return notifications.filter(n => n.unread).length; }
+
+function updateBadge() {
+  const n = countUnread();
+  notifBadge.textContent = n;
+  notifBadge.style.display = n > 0 ? 'flex' : 'none';
+}
+
+function renderNotifications() {
+  notifList.innerHTML = '';
+  if (!notifications.length) {
+    notifList.innerHTML = `<div class="notif-empty"><div class="notif-empty-icon">🔔</div>No notifications yet</div>`;
+    return;
+  }
+  notifications.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'notif-item' + (n.unread ? ' unread' : '');
+    el.dataset.id = n.id;
+
+    const iconHTML = n.avatar
+      ? `<div class="notif-avatar" style="background:linear-gradient(135deg,${n.color}bb,${n.color})">${n.avatar}</div>`
+      : `<div class="notif-icon-wrap">${TYPE_EMOJI[n.type] || '🔔'}</div>`;
+
+    el.innerHTML = `
+      ${iconHTML}
+      <div class="notif-body">
+        <div class="notif-text">${n.text}</div>
+        <div class="notif-time">${n.time}</div>
+      </div>
+    `;
+
+    el.addEventListener('click', () => {
+      n.unread = false;
+      el.classList.remove('unread');
+      updateBadge();
+    });
+
+    notifList.appendChild(el);
+  });
+}
+
+function openNotifPanel() {
+  notifOpen = true;
+  renderNotifications();
+  notifPanel.classList.add('open');
+  notifBackdrop.classList.add('open');
+  notifBtn.style.color = 'var(--accent)';
+}
+
+function closeNotifPanel() {
+  notifOpen = false;
+  notifPanel.classList.remove('open');
+  notifBackdrop.classList.remove('open');
+  notifBtn.style.color = '';
+}
+
+notifBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  notifOpen ? closeNotifPanel() : openNotifPanel();
+});
+
+notifBackdrop.addEventListener('click', closeNotifPanel);
+
+notifMarkAll.addEventListener('click', () => {
+  notifications.forEach(n => n.unread = false);
+  renderNotifications();
+  updateBadge();
+  showToast('All notifications marked as read ✓');
+});
+
+// Init badge
+updateBadge();
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR FOLLOW BUTTONS
+   ═══════════════════════════════════════════════════════════ */
+document.querySelector('.sidebar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.follow-btn');
+  if (!btn) return;
+  const userRow = btn.closest('.sidebar-user');
+  const handle  = userRow?.dataset.handle;
+  const isNowFollowing = btn.classList.toggle('following');
+  btn.textContent = isNowFollowing ? 'Following' : 'Follow';
+
+  if (handle) {
+    if (isNowFollowing) {
+      followedUsers.set(handle, {
+        name:     userRow.dataset.name,
+        initials: userRow.dataset.initials,
+        color:    userRow.dataset.color,
+        meta:     userRow.dataset.meta,
+        isNew:    true,
+      });
+      showToast(`Following @${handle} ✓`);
+    } else {
+      followedUsers.delete(handle);
+      showToast(`Unfollowed @${handle}`);
+    }
+    if (activeTab === 'following') renderFollowingFeed();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   PROFILE MANAGEMENT
+   ═══════════════════════════════════════════════════════════ */
+const profileState = {
+  displayName: 'James Dev',
+  handle: 'jamesdev',
+  bio: 'Full-stack dev. Building things in public. 🚀',
+  avatarColor: '#6EE7B7',
+  initials: 'JD',
+  // editing draft
+  draft: {},
+};
+
+const profileModal   = document.getElementById('profileModal');
+const profileOverlay = document.getElementById('profileOverlay');
+const profileClose   = document.getElementById('profileClose');
+const profileEditToggle = document.getElementById('profileEditToggle');
+const profileView    = document.getElementById('profileView');
+const profileEditEl  = document.getElementById('profileEdit');
+
+// View elements
+const viewDisplayName  = document.getElementById('viewDisplayName');
+const viewHandle       = document.getElementById('viewHandle');
+const viewBio          = document.getElementById('viewBio');
+const profileAvatarDisplay = document.getElementById('profileAvatarDisplay');
+const statLikesEl      = document.getElementById('statLikes');
+const statSavedEl      = document.getElementById('statSaved');
+
+// Edit elements
+const editDisplayName = document.getElementById('editDisplayName');
+const editHandle      = document.getElementById('editHandle');
+const editBio         = document.getElementById('editBio');
+const editBioCount    = document.getElementById('bioCharCount');
+const editSaveBtn     = document.getElementById('editSave');
+const editCancelBtn   = document.getElementById('editCancel');
+const profileAvatarEdit = document.getElementById('profileAvatarEdit');
+const colorSwatches   = document.querySelectorAll('.color-swatch');
+
+function openProfileModal() {
+  // refresh live stats
+  statLikesEl.textContent = fmt(state.likedIds.size);
+  statSavedEl.textContent = fmt(state.savedIds.size);
+  renderProfileView();
+  showProfileView();
+  profileOverlay.classList.add('open');
+  profileModal.classList.add('open');
+  profileEditToggle.textContent = 'Edit';
+  profileEditToggle.classList.remove('editing');
+}
+
+function closeProfileModal() {
+  profileModal.classList.remove('open');
+  profileOverlay.classList.remove('open');
+}
+
+function renderProfileView() {
+  viewDisplayName.textContent = profileState.displayName;
+  viewHandle.textContent = '@' + profileState.handle;
+  viewBio.textContent = profileState.bio || '—';
+  updateAvatarUI(profileAvatarDisplay, profileState.avatarColor, profileState.initials);
+  // also sync topbar avatar
+  document.querySelector('.topbar-actions .avatar').textContent = profileState.initials;
+}
+
+function updateAvatarUI(el, color, initials) {
+  if (!el) return;
+  el.textContent = initials;
+  el.style.background = `linear-gradient(135deg, ${color}bb, ${color})`;
+  el.style.outlineColor = color;
+}
+
+function showProfileView() {
+  profileView.style.display = 'flex';
+  profileEditEl.style.display = 'none';
+}
+
+function showEditMode() {
+  // populate draft fields
+  editDisplayName.value = profileState.displayName;
+  editHandle.value = profileState.handle;
+  editBio.value = profileState.bio;
+  editBioCount.textContent = profileState.bio.length;
+  updateAvatarUI(profileAvatarEdit, profileState.avatarColor, profileState.initials);
+
+  // mark active color swatch
+  colorSwatches.forEach(sw => {
+    sw.classList.toggle('active', sw.dataset.color === profileState.avatarColor);
+  });
+
+  profileView.style.display = 'none';
+  profileEditEl.style.display = 'flex';
+  profileEditToggle.textContent = 'View';
+  profileEditToggle.classList.add('editing');
+  editDisplayName.focus();
+}
+
+function saveProfile() {
+  const newName    = editDisplayName.value.trim();
+  const newHandle  = editHandle.value.trim().replace(/^@/, '');
+  const newBio     = editBio.value.trim();
+  if (!newName) { editDisplayName.focus(); showToast('Name cannot be empty ✏️'); return; }
+  if (!newHandle) { editHandle.focus(); showToast('Handle cannot be empty ✏️'); return; }
+
+  profileState.displayName = newName;
+  profileState.handle      = newHandle;
+  profileState.bio         = newBio;
+  profileState.initials    = (newName.split(' ').map(w => w[0]).join('').slice(0, 2)).toUpperCase();
+
+  renderProfileView();
+  showProfileView();
+  profileEditToggle.textContent = 'Edit';
+  profileEditToggle.classList.remove('editing');
+  showToast('Profile saved ✅');
+}
+
+// Color swatch clicks
+colorSwatches.forEach(sw => {
+  sw.addEventListener('click', () => {
+    colorSwatches.forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    profileState.avatarColor = sw.dataset.color;
+    updateAvatarUI(profileAvatarEdit, profileState.avatarColor,
+      editDisplayName.value.trim().split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || profileState.initials
+    );
+  });
+});
+
+// Bio char counter
+editBio.addEventListener('input', () => {
+  editBioCount.textContent = editBio.value.length;
+});
+
+// initials preview while typing name
+editDisplayName.addEventListener('input', () => {
+  const initials = editDisplayName.value.trim().split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  if (profileAvatarEdit && initials) profileAvatarEdit.textContent = initials;
+});
+
+profileClose.addEventListener('click', closeProfileModal);
+profileOverlay.addEventListener('click', closeProfileModal);
+editCancelBtn.addEventListener('click', () => { showProfileView(); profileEditToggle.textContent = 'Edit'; profileEditToggle.classList.remove('editing'); });
+editSaveBtn.addEventListener('click', saveProfile);
+
+profileEditToggle.addEventListener('click', () => {
+  if (profileEditEl.style.display === 'none') {
+    showEditMode();
+  } else {
+    showProfileView();
+    profileEditToggle.textContent = 'Edit';
+    profileEditToggle.classList.remove('editing');
+  }
+});
+
+// Open on avatar click
+document.querySelector('.topbar-actions .avatar').addEventListener('click', openProfileModal);
 
 /* ═══════════════════════════════════════════════════════════
    INIT
@@ -727,5 +1497,3 @@ async function init() {
 }
 
 init();
-
-
